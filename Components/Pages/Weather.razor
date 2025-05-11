@@ -1,0 +1,106 @@
+﻿@rendermode InteractiveServer
+@page "/weather"
+@attribute [StreamRendering]
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <button @onclick="filterCold">Filter cold days</button>
+    <button @onclick="restore">Restore</button>
+
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <h3>Warm days: @warmDays</h3>
+    <input class="form-control" @oninput="@Input" />
+
+
+}
+
+@code {
+    private WeatherForecast[]? forecasts;
+    private WeatherForecast[]? forecastsCopy;
+
+    private int warmDays = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Simulate asynchronous loading to demonstrate streaming rendering
+        await Task.Delay(500);
+
+        var startDate = DateOnly.FromDateTime(DateTime.Now);
+        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
+        forecasts = Enumerable.Range(1, 10).Select(index => new WeatherForecast
+        {
+            Date = startDate.AddDays(index),
+            TemperatureC = Random.Shared.Next(-20, 55),
+        Summary = summaries[Random.Shared.Next(summaries.Length)]
+        }).ToArray();
+
+        foreach ( WeatherForecast forecast in forecasts)
+        {
+            if (forecast.TemperatureC > 15) warmDays++;
+        }
+        forecastsCopy = forecasts.ToArray();
+
+    }
+
+    protected void filterCold()
+    {
+        IEnumerable<WeatherForecast> temp = from forecast in forecasts
+                                            where forecast.TemperatureC < 15
+                                            select forecast;
+        forecasts = temp.ToArray();
+    }
+
+    protected void restore()
+    {
+        forecasts = forecastsCopy.ToArray();
+    }
+
+    private void Input(ChangeEventArgs arg)
+    {
+        forecasts = forecastsCopy.ToArray();
+        string text = arg.Value as string;
+        IEnumerable<WeatherForecast> temp = from forecast in forecasts
+                                            where forecast.Summary.Contains(text)
+                                            select forecast;
+        forecasts = temp.ToArray();
+    }
+
+    private class WeatherForecast
+    {
+        public DateOnly Date { get; set; }
+        public int TemperatureC { get; set; }
+        public string? Summary { get; set; }
+        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    }
+}
